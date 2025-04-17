@@ -1,12 +1,32 @@
 import os
+# Disable Triton compilation
+os.environ["NO_TORCH_COMPILE"] = "1"
+
+# Suppress missing Triton import warning during torch import
+import sys
+_orig_stdout, _orig_stderr = sys.stdout, sys.stderr
+class _FilterIO:
+    def __init__(self, orig):
+        self.orig = orig
+    def write(self, data):
+        if "no module named 'triton'" in data.lower():
+            return
+        self.orig.write(data)
+    def flush(self):
+        self.orig.flush()
+
+sys.stdout = _FilterIO(_orig_stdout)
+sys.stderr = _FilterIO(_orig_stderr)
+
+# Imports that may trigger Triton missing module warnings
 import torch
 import torchaudio
 from huggingface_hub import hf_hub_download
 from generator import load_csm_1b, Segment
 from dataclasses import dataclass
 
-# Disable Triton compilation
-os.environ["NO_TORCH_COMPILE"] = "1"
+# Restore original stdout and stderr after imports
+sys.stdout, sys.stderr = _orig_stdout, _orig_stderr
 
 # Default prompts are available at https://hf.co/sesame/csm-1b
 prompt_filepath_conversational_a = hf_hub_download(
@@ -57,8 +77,10 @@ def prepare_prompt(text: str, speaker: int, audio_path: str, sample_rate: int) -
     return Segment(text=text, speaker=speaker, audio=audio_tensor)
 
 def main():
-    # Select the best available device, skipping MPS due to float64 limitations
-    if torch.cuda.is_available():
+    # Select the best available device: prefer MPS on Mac, then CUDA, then CPU
+    if torch.backends.mps.is_available():
+        device = "mps"
+    elif torch.cuda.is_available():
         device = "cuda"
     else:
         device = "cpu"
@@ -90,6 +112,12 @@ def main():
         {"text": "Me too! This is some cool stuff, isn't it?", "speaker_id": 1}
     ]
 
+    # Determine max audio length per utterance (shorter demo on CPU/MPS)
+    if device != "cuda":
+        max_audio_length_ms = 2_000  # 2 seconds for quick demo on CPU/MPS
+    else:
+        max_audio_length_ms = 10_000  # full 10 seconds on CUDA
+
     # Generate each utterance
     generated_segments = []
     prompt_segments = [prompt_a, prompt_b]
@@ -100,7 +128,7 @@ def main():
             text=utterance['text'],
             speaker=utterance['speaker_id'],
             context=prompt_segments + generated_segments,
-            max_audio_length_ms=10_000,
+            max_audio_length_ms=max_audio_length_ms,
         )
         generated_segments.append(Segment(text=utterance['text'], speaker=utterance['speaker_id'], audio=audio_tensor))
 

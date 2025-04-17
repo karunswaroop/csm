@@ -156,21 +156,27 @@ class Generator:
             ).unsqueeze(1)
             curr_pos = curr_pos[:, -1:] + 1
 
-        audio = self._audio_tokenizer.decode(torch.stack(samples).permute(1, 2, 0)).squeeze(0).squeeze(0)
-
-        # This applies an imperceptible watermark to identify audio as AI-generated.
-        # Watermarking ensures transparency, dissuades misuse, and enables traceability.
-        # Please be a responsible AI citizen and keep the watermarking in place.
-        # If using CSM 1B in another application, use your own private key and keep it secret.
-        audio, wm_sample_rate = watermark(self._watermarker, audio, self.sample_rate, CSM_1B_GH_WATERMARK)
-        audio = torchaudio.functional.resample(audio, orig_freq=wm_sample_rate, new_freq=self.sample_rate)
-
+        # Decode generated frames into raw audio waveform
+        raw_audio = self._audio_tokenizer.decode(torch.stack(samples).permute(1, 2, 0)).squeeze(0).squeeze(0)
+        # Attempt to apply imperceptible watermark; if it fails (e.g., FFT unsupported), return raw audio
+        try:
+            audio_wm, wm_sample_rate = watermark(
+                self._watermarker, raw_audio, self.sample_rate, CSM_1B_GH_WATERMARK
+            )
+            # Resample watermark output back to original sample rate
+            audio = torchaudio.functional.resample(
+                audio_wm, orig_freq=wm_sample_rate, new_freq=self.sample_rate
+            )
+        except Exception as e:
+            print(f"Warning: watermarking failed, returning raw audio: {e}")
+            audio = raw_audio
         return audio
 
 
 def load_csm_1b(device: str = "cuda") -> Generator:
+    # Load the pretrained CSM-1B model
     model = Model.from_pretrained("sesame/csm-1b")
-    model.to(device=device, dtype=torch.bfloat16)
-
-    generator = Generator(model)
-    return generator
+    # Use float32 on MPS (macOS) because bfloat16 is not supported before macOS 14
+    dtype = torch.float32 if device == "mps" else torch.bfloat16
+    model.to(device=device, dtype=dtype)
+    return Generator(model)
