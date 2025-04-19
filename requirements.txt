@@ -7,3 +7,8 @@ moshi==0.2.2
 torchtune==0.4.0
 torchao==0.9.0
 silentcipher @ git+https://github.com/SesameAILabs/silentcipher@master
+# Optional: SDK for LM Studio tests
+# Optional SDK for LM Studio tests
+lmstudio==1.2.0
+# Optional: local audio playback on macOS/Windows
+simpleaudio>=1.0.4; sys_platform == "darwin" or sys_platform == "win32"

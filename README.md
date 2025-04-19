@@ -16,6 +16,11 @@ A hosted [Hugging Face space](https://huggingface.co/spaces/sesame/csm-1b) is al
 * The code has been tested on CUDA 12.4 and 12.6, but it may also work on other versions
 * Similarly, Python 3.10 is recommended, but newer versions may be fine
 * For some audio operations, `ffmpeg` may be required
+* To automatically play back generated WAVs on Linux, install a system audio player:
+  * `aplay` (from `alsa-utils`)
+  * `paplay` (from `pulseaudio-utils`)
+  * `play` (from `sox`)
+  * `ffplay` (from `ffmpeg`)
 * Access to the following Hugging Face models:
   * [Llama-3.2-1B](https://huggingface.co/meta-llama/Llama-3.2-1B)
   * [CSM-1B](https://huggingface.co/sesame/csm-1b)
