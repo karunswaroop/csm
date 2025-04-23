@@ -7,6 +7,7 @@ import torchaudio
 from huggingface_hub import hf_hub_download
 from generator import load_csm_1b, Segment
 from dataclasses import dataclass
+import argparse
 
 # Default prompts are available at https://hf.co/sesame/csm-1b
 prompt_filepath_conversational_a = hf_hub_download(
@@ -57,6 +58,14 @@ def prepare_prompt(text: str, speaker: int, audio_path: str, sample_rate: int) -
     return Segment(text=text, speaker=speaker, audio=audio_tensor)
 
 def main():
+    # Parse command-line arguments
+    parser = argparse.ArgumentParser(description="Generate CSM conversation from a conversation text file")
+    parser.add_argument("--speaker1-id", type=int, default=0, help="ID to assign to speaker1 in the conversation")
+    parser.add_argument("--speaker2-id", type=int, default=1, help="ID to assign to speaker2 in the conversation")
+    parser.add_argument("--conversation-file", type=str, default=os.path.join(os.path.dirname(__file__), "sample_conversation.txt"), help="Path to the conversation text file")
+    parser.add_argument("--output-file", "-o", type=str, default="full_conversation.wav", help="Output WAV file path")
+    args = parser.parse_args()
+
     # Select the best available device, skipping MPS due to float64 limitations
     if torch.cuda.is_available():
         device = "cuda"
@@ -95,13 +104,28 @@ def main():
         generator.sample_rate
     )
 
-    # Generate conversation
-    conversation = [
-        {"text": "Hey how are you doing?", "speaker_id": 0},
-        {"text": "Pretty good, pretty good. How about you?", "speaker_id": 1},
-        {"text": "I'm great! So happy to be speaking with you today.", "speaker_id": 0},
-        {"text": "Me too! This is some cool stuff, isn't it?", "speaker_id": 1}
-    ]
+    # Load conversation from text file
+    conversation = []
+    conv_filepath = args.conversation_file
+    if not os.path.exists(conv_filepath):
+        raise FileNotFoundError(f"Conversation file not found: {conv_filepath}")
+    with open(conv_filepath, "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            if ":" not in line:
+                raise ValueError(f"Invalid line in {conv_filepath}: {line}")
+            speaker, text = line.split(":", 1)
+            speaker = speaker.strip().lower()
+            text = text.strip()
+            if speaker in ("speaker1", "0"):
+                speaker_id = args.speaker1_id
+            elif speaker in ("speaker2", "1"):
+                speaker_id = args.speaker2_id
+            else:
+                raise ValueError(f"Unknown speaker '{speaker}' in {conv_filepath}")
+            conversation.append({"text": text, "speaker_id": speaker_id})
 
     # Generate each utterance
     generated_segments = []
@@ -123,11 +147,11 @@ def main():
     # Concatenate all generations
     all_audio = torch.cat([seg.audio for seg in generated_segments], dim=0)
     torchaudio.save(
-        "full_conversation.wav",
+        args.output_file,
         all_audio.unsqueeze(0).cpu(),
         generator.sample_rate
     )
-    print("Successfully generated full_conversation.wav")
+    print(f"Successfully generated {args.output_file}")
 
 if __name__ == "__main__":
     main() 

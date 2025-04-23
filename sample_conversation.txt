@@ -1,0 +1,7 @@
+# sample_conversation.txt
+# Each line supports speaker1 or speaker2 identifiers, followed by a colon and the utterance text.
+# Lines starting with '#' or empty lines are ignored.
+speaker1: Hey how are you doing?
+speaker2: Pretty good, pretty good. How about you?
+speaker1: I'm great! So happy to be speaking with you today.
+speaker2: Me too! This is some cool stuff, isn't it?
