@@ -1,0 +1,15 @@
+codex
+    I’ve added two files:
+
+    • run_conversation.py – a CLI tool that reads a text file of utterances (lines “0: your text” or “1: your text”), lets you pick which prompt style
+    (conversational_a or conversational_b) each speaker uses, and generates a single WAV.
+
+    • sample_conversation.txt – a sample script you can pass to the tool.
+
+    Usage example:
+
+    bash
+    python run_conversation.py sample_conversation.txt --style0 conversational_a --style1 conversational_b --output my_chat.wav
+
+    Let me know if you’d like any tweaks!
+

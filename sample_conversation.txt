@@ -1,0 +1,8 @@
+# Sample conversation script
+# Format: lines start with '0:' or '1:' indicating speaker ID
+0: Hello there! How are you doing today?
+1: I'm doing great, thank you! How about you?
+0: I'm fine as well. Excited to hear what this AI can do.
+1: It's impressive! Let's test some more lines.
+0: Sure, let's continue our conversation.
+1: Absolutely, this is quite fun!
